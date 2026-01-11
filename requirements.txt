@@ -1,3 +1,8 @@
+django
+graphene-django
 django-crontab
 gql
 requests
+celery
+redis
+django-celery-beat
