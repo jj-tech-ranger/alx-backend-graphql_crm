@@ -1,33 +1,33 @@
-import requests
 import datetime
+from gql import gql, Client  #
+from gql.transport.requests import RequestsHTTPTransport  #
 
-# Define the GraphQL endpoint
 URL = "http://localhost:8000/graphql"
 LOG_FILE = "/tmp/order_reminders_log.txt"
 
-# GraphQL query for orders within the last 7 days
-query = """
-query {
-  allOrders(orderDate_Gte: "%s") {
-    id
-    customer {
-      email
+transport = RequestsHTTPTransport(url=URL)
+client = Client(transport=transport, fetch_schema_from_transport=True)
+
+query = gql("""
+  query {
+    allOrders(orderDate_Gte: "%s") {
+      id
+      customer {
+        email
+      }
     }
   }
-}
-""" % (datetime.datetime.now() - datetime.timedelta(days=7)).isoformat()
+""" % (datetime.datetime.now() - datetime.timedelta(days=7)).isoformat())
 
 try:
-    response = requests.post(URL, json={'query': query})
-    data = response.json()
-    orders = data['data']['allOrders']
-
+    result = client.execute(query)
+    orders = result.get('allOrders', [])
+    
     with open(LOG_FILE, "a") as f:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         for order in orders:
-            log_entry = f"{timestamp} - Order ID: {order['id']}, Email: {order['customer']['email']}\n"
-            f.write(log_entry)
-
-    print("Order reminders processed!")  #
+            f.write(f"{timestamp} - Order ID: {order['id']}, Email: {order['customer']['email']}\n")
+            
+    print("Order reminders processed!") #
 except Exception as e:
     print(f"Error: {e}")
