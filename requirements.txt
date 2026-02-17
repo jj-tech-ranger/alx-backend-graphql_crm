@@ -1,8 +1,4 @@
-django
-graphene-django
-django-crontab
-gql
-requests
-celery
-redis
-django-celery-beat
+django-crontab 
+celery==5.3.6
+redis==5.0.1
+django-celery-beat==2.6.0

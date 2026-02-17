@@ -1,18 +1,24 @@
 #!/bin/bash
 
-LOG_FILE="/tmp/customer_cleanup_log.txt"
-MANAGE_PY="$(cd "$(dirname "$0")/../.." && pwd)/manage.py"
+# Navigate to project root (adjust path if needed)
+PROJECT_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+cd "$PROJECT_DIR" || exit 1
 
-python3 "$MANAGE_PY" shell <<EOF >> "$LOG_FILE"
-import datetime
+# Navigate to project root
+# cd "C:/Users/HP/Desktop/ALX Prodev program/alx-backend-graphql_crm" || exit 1
+
+# Run Django shell command to delete inactive customers
+DELETED_COUNT=$(python manage.py shell -c "
 from django.utils import timezone
+from datetime import timedelta
 from crm.models import Customer
 
-one_year_ago = timezone.now() - datetime.timedelta(days=365)
-inactive_customers = Customer.objects.filter(order__isnull=True, date_joined__lt=one_year_ago)
-count = inactive_customers.count()
-inactive_customers.delete()
+cutoff = timezone.now() - timedelta(days=365)
+qs = Customer.objects.filter(orders__isnull=True, created_at__lt=cutoff).distinct()
+count = qs.count()
+qs.delete()
+print(count)
+")
 
-timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-print(f"{timestamp} - Deleted {count} inactive customers.")
-EOF
+# Log result with timestamp
+echo \"\$(date '+%Y-%m-%d %H:%M:%S') - Deleted customers: $DELETED_COUNT\" >> /tmp/customer_cleanup_log.txt

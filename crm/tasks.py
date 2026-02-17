@@ -1,31 +1,34 @@
-from datetime import datetime
-import requests
 from celery import shared_task
-from gql import gql, Client
-from gql.transport.requests import RequestsHTTPTransport
+import requests
+from datetime import datetime
 
 @shared_task
 def generate_crm_report():
-    url = "http://localhost:8000/graphql"
-    log_path = "/tmp/crm_report_log.txt"
-    
-    transport = RequestsHTTPTransport(url=url)
-    client = Client(transport=transport, fetch_schema_from_transport=True)
-    
-    query = gql("""
-        query {
-          totalStats
+    url = "http://127.0.0.1:8000/graphql/"
+    query = """
+    query {
+        allCustomers {
+            totalCount
         }
-    """)
-    
+        allOrders {
+            totalCount
+            totalRevenue
+        }
+    }
+    """
     try:
-        result = client.execute(query)
-        stats = result.get('totalStats', {})
-        
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        report = f"{timestamp} - Report: {stats.get('customers', 0)} customers, {stats.get('orders', 0)} orders, {stats.get('revenue', 0)} revenue\n"
-        
-        with open(log_path, "a") as f:
-            f.write(report)
+        response = requests.post(url, json={'query': query})
+        data = response.json()
+
+        # Extract data
+        customers = data['data']['allCustomers']['totalCount']
+        orders = data['data']['allOrders']['totalCount']
+        revenue = data['data']['allOrders']['totalRevenue']
+
+        log_file = "/tmp/crm_report_log.txt"
+        with open(log_file, "a") as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Report: "
+                    f"{customers} customers, {orders} orders, {revenue} revenue\n")
     except Exception as e:
-        print(f"Error generating report: {e}")
+        with open("/tmp/crm_report_log.txt", "a") as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Error: {str(e)}\n")
